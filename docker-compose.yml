@@ -36,8 +36,8 @@ services:
     container_name: socket
     networks:
       pf:
-         aliases:
-           - "$PATHFINDER_SOCKET_HOST"
+        aliases:
+          - "$PATHFINDER_SOCKET_HOST"
     volumes:
       - ./logs:/var/www/html/pathfinder/history/map
       - /etc/timezone:/etc/timezone:ro
@@ -45,6 +45,8 @@ services:
 
     restart: always
   pf:
+    ports:
+      - "8081:80"
     container_name: pathfinder
     image: ghcr.io/goryn-clade/pathfinder:latest
     env_file:
@@ -107,9 +109,9 @@ services:
     restart: always
 
 volumes:
-     db_data:
-     redis_data:
+  db_data:
+  redis_data:
 networks:
-    pf:
-    web:
-      external: true
+  pf:
+  web:
+    external: true
