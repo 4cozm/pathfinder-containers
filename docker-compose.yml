@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   pfdb:
     image: bianjp/mariadb-alpine:latest
@@ -31,24 +29,28 @@ services:
       driver: none
     restart: always
   pf-socket:
-    image: ghcr.io/goryn-clade/pf-websocket:latest
+    container_name: pf-socket
+    build:
+      context: .
+      dockerfile: Dockerfile.websocket
+    image: pf-websocket:local
+    env_file:
+      - .env
     command: ["--tcpHost", "0.0.0.0"]
-    container_name: socket
     networks:
       pf:
         aliases:
           - "$PATHFINDER_SOCKET_HOST"
     volumes:
+      - pf_tmp:/var/www/html/pathfinder/tmp
       - ./logs:/var/www/html/pathfinder/history/map
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-
     restart: always
   pf:
-    ports:
-      - "8081:80"
     container_name: pathfinder
-    image: ghcr.io/goryn-clade/pathfinder:latest
+    build: .
+    image: pathfinder:local
     env_file:
       - .env
     labels:
@@ -69,9 +71,11 @@ services:
     healthcheck:
       disable: true
     volumes:
+      - pf_tmp:/var/www/html/pathfinder/tmp
       - ./config/pathfinder/config.ini:/var/www/html/pathfinder/app/templateConfig.ini
       - ./config/pathfinder/pathfinder.ini:/var/www/html/pathfinder/app/pathfinder.ini
       - ./config/pathfinder/plugin.ini:/var/www/html/pathfinder/app/plugin.ini
+      - ./config/pathfinder/environment.ini:/var/www/html/pathfinder/app/templateEnvironment.ini:ro
       - ./logs:/var/www/html/pathfinder/history/map
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -80,8 +84,36 @@ services:
       - pf-redis
       - pf-socket
     restart: always
+  pf-daemon:
+    container_name: pathfinder-daemon
+    build: .
+    image: pathfinder:local
+    env_file:
+      - .env
+    networks:
+      - pf
+    healthcheck:
+      disable: true
+    volumes:
+      - pf_tmp:/var/www/html/pathfinder/tmp
+      - ./pathfinder/standalone-daemon.php:/var/www/html/pathfinder/standalone-daemon.php:ro
+      - ./config/pathfinder/config.ini:/var/www/html/pathfinder/app/templateConfig.ini:ro
+      - ./config/pathfinder/pathfinder.ini:/var/www/html/pathfinder/app/pathfinder.ini
+      - ./config/pathfinder/plugin.ini:/var/www/html/pathfinder/app/plugin.ini
+      - ./config/pathfinder/environment.ini:/var/www/html/pathfinder/app/templateEnvironment.ini:ro
+      - ./logs:/var/www/html/pathfinder/history/map
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - pfdb
+      - pf-redis
+      - pf-socket
+    restart: always
+    working_dir: /var/www/html/pathfinder
+    command: ["php", "/var/www/html/pathfinder/standalone-daemon.php", "10"]
+
   traefik:
-    image: traefik:v2.3
+    image: traefik:v2.11
     container_name: traefik
     command:
       - "--log.level=ERROR"
@@ -100,7 +132,7 @@ services:
       - "443:443"
       - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./letsencrypt:/letsencrypt
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -111,6 +143,8 @@ services:
 volumes:
   db_data:
   redis_data:
+  pf_tmp:
+  standalone_ticket:
 networks:
   pf:
   web:

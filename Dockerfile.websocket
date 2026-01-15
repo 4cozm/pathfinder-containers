@@ -1,0 +1,17 @@
+# Dockerfile.websocket
+FROM ghcr.io/goryn-clade/pf-websocket:latest
+
+# websocket 프로젝트를 컨테이너로 복사
+COPY ./websocket /srv/websocket
+
+WORKDIR /srv/websocket
+
+# composer 의존성 설치 (vendor 포함)
+RUN composer install --no-interaction --no-dev --prefer-dist
+
+# entrypoint 래퍼 추가 (볼륨 권한 보정)
+COPY ./websocket/entrypoint.sh /ws-entrypoint.sh
+RUN chmod +x /ws-entrypoint.sh
+
+# ✅ 래퍼가 php cmd.php를 실행하도록 고정
+ENTRYPOINT ["/ws-entrypoint.sh", "php", "cmd.php"]
