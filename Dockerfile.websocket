@@ -1,17 +1,37 @@
-# Dockerfile.websocket
-FROM ghcr.io/goryn-clade/pf-websocket:latest
+# 1. 공식 PHP Alpine 이미지를 Base로 사용
+FROM php:8.3-cli-alpine
 
-# websocket 프로젝트를 컨테이너로 복사
-COPY ./websocket /srv/websocket
+# 2. 필수 시스템 패키지 및 PHP 모듈 설치
+# (websocket 서버 통신을 위한 로우레벨 패키지/소켓 모듈 포함)
+RUN apk add --no-cache \
+    unzip \
+    libzip-dev \
+    bzip2-dev \
+    linux-headers \
+    && docker-php-ext-install sockets pcntl zip bz2
 
+# 3. 최신 Composer 바이너리 마운트 복사
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# 이후 작업 디렉토리 지정
 WORKDIR /srv/websocket
 
-# composer 의존성 설치 (vendor 포함)
-RUN composer install --no-interaction --no-dev --prefer-dist
+# 4. 의존성 파일(composer.json)만 먼저 복사하여 레이어 캐시(Cache) 극대화
+# (소스 코드 변경 시 composer install이 다시 실행되는 것을 방지)
+COPY ./websocket/composer.json ./websocket/composer.lock* ./
 
-# entrypoint 래퍼 추가 (볼륨 권한 보정)
+# 5. 의존성 설치 (우선 오토로더 제외)
+RUN composer install --no-interaction --no-dev --prefer-dist --no-scripts --no-autoloader
+
+# 6. 의존성 설치가 끝난 후, 변경이 잦은 나머지 소스코드 덮어쓰기
+COPY ./websocket /srv/websocket
+
+# 7. 소스코드 복사 완료 후 오토로더 최종 최적화
+RUN composer dump-autoload --optimize
+
+# 8. 권한 보정 스크립트를 Entrypoint로 지정
 COPY ./websocket/entrypoint.sh /ws-entrypoint.sh
 RUN chmod +x /ws-entrypoint.sh
 
-# ✅ 래퍼가 php cmd.php를 실행하도록 고정
+# 컨테이너 실행 명령 (entrypoint.sh가 php cmd.php 를 감싸서 실행함)
 ENTRYPOINT ["/ws-entrypoint.sh", "php", "cmd.php"]

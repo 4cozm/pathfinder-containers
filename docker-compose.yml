@@ -56,10 +56,12 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
+      - "traefik.http.routers.pf.service=pf"
       - "traefik.http.services.pf.loadbalancer.server.port=80"
-      - "traefik.http.routers.pf.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.pf.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
       - "traefik.http.routers.pf.entrypoints=web"
-      - "traefik.http.routers.pf-secure.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.pf-secure.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
+      - "traefik.http.routers.pf-secure.service=pf"
       - "traefik.http.routers.pf-secure.entrypoints=websecure"
       - "traefik.http.routers.pf-secure.tls=true"
       - "traefik.http.routers.pf-secure.tls.certresolver=letsencrypt"
@@ -138,6 +140,23 @@ services:
       - /etc/localtime:/etc/localtime:ro
     networks:
       - web
+    restart: always
+
+  pf-cron:
+    image: docker:cli
+    container_name: pathfinder-cron
+    networks:
+      - pf
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backup_db.sh:/backup_db.sh
+      - .:/backup_dir
+    environment:
+      - TZ=Asia/Seoul
+    entrypoint: >
+      sh -c "
+      echo '0 6 * * * cd /backup_dir && sh /backup_db.sh >> /backup_dir/backup.log 2>&1' > /etc/crontabs/root &&
+      crond -f -d 8"
     restart: always
 
 volumes:
