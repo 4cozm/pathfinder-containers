@@ -4,3 +4,5 @@ letsencrypt
 *.production*
 static/php/xdebug.ini
 Dockerfile
+config/pathfinder/environment.ini
+pathfinder\app\templateEnvironment.ini
