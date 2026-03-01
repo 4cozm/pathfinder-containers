@@ -14,6 +14,10 @@ WORKDIR /app
 RUN composer self-update 2.1.8
 RUN composer install
 
+# Pathfinder/Cortex use Schema::DT_JSON but f3-schema-builder does not define it (same as root Dockerfile)
+COPY scripts/patch-schema-dt-json.php /tmp/patch-schema-dt-json.php
+RUN php /tmp/patch-schema-dt-json.php /app/vendor/ikkez/f3-schema-builder/lib/db/sql/schema.php
+
 FROM trafex/alpine-nginx-php7:ba1dd422
 
 RUN apk update && apk add --no-cache busybox-suid sudo php7-redis php7-pdo php7-pdo_mysql \
