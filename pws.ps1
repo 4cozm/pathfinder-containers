@@ -73,7 +73,20 @@ if (-not $SkipNodeCheck) {
         else { Write-Ok "Switched to Node 12" }
     }
 
-    $nodeVersion = (node -v 2>$null) -replace "v", ""
+    # node 명령어 확인 (PATH에 없으면 기본 nvm 심볼릭 링크 경로 시도)
+    $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+    if (-not $nodeCmd) {
+        $defaultNodePath = "C:\Program Files\nodejs\node.exe"
+        if (Test-Path $defaultNodePath) {
+            $nodeCmd = $defaultNodePath
+        } else {
+            Exit-WithError "Node not found. Please ensure Node is installed and in your PATH."
+        }
+    }
+
+    $nodeVersion = (& $nodeCmd -v 2>$null) -replace "v", ""
+    if (-not $nodeVersion) { Exit-WithError "Failed to get Node version." }
+
     $major = [int]($nodeVersion -split "\.")[0]
     if ($major -ne 12) {
         Write-Warn "Current Node is $nodeVersion. Pathfinder expects Node 12.x. Use nvm use 12 or -SkipNodeCheck to continue anyway."
