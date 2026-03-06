@@ -2,13 +2,13 @@
 FROM php:8.3-cli-alpine
 
 # 2. 필수 시스템 패키지 및 PHP 모듈 설치
-# (websocket 서버 통신을 위한 로우레벨 패키지/소켓 모듈 포함)
+# (websocket 서버 통신을 위한 로우레벨 패키지/소켓 모듈 + MariaDB 연결용 pdo_mysql)
 RUN apk add --no-cache \
     unzip \
     libzip-dev \
     bzip2-dev \
     linux-headers \
-    && docker-php-ext-install sockets pcntl zip bz2
+    && docker-php-ext-install sockets pcntl zip bz2 pdo_mysql
 
 # 3. 최신 Composer 바이너리 마운트 복사
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
