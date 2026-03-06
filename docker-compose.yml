@@ -13,6 +13,27 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     restart: always
+  pf-migrate-standalone:
+    image: bianjp/mariadb-alpine:latest
+    env_file:
+      - .env
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_PF_DB_NAME: ${MYSQL_PF_DB_NAME:-pathfinder}
+    volumes:
+      - ./pathfinder/export/sql/standalone_detect_characters.sql:/sql/standalone_detect_characters.sql:ro
+      - ./pathfinder/export/sql/standalone_detect_log.sql:/sql/standalone_detect_log.sql:ro
+      - ./scripts/migrate-standalone-detect.sh:/migrate.sh:ro
+    entrypoint: ["sh", "/migrate.sh"]
+    depends_on:
+      - pfdb
+    restart: "no"
+    networks:
+      - pf
+
   pf-redis:
     image: redis:6.2.5-alpine3.14
     command: ["redis-server", "--appendonly", "yes"]
