@@ -17,6 +17,9 @@ until mysql -h "$HOST" -P "$PORT" -u "$USER" -e "SELECT 1" 2>/dev/null; do
   sleep 2
 done
 
+echo "Ensuring database $DB exists..."
+mysql -h "$HOST" -P "$PORT" -u "$USER" -e "CREATE DATABASE IF NOT EXISTS \`$DB\`;"
+
 for f in /sql/standalone_detect_characters.sql /sql/standalone_detect_log.sql; do
   if [ -f "$f" ]; then
     echo "Running $f on database $DB..."
