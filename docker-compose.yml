@@ -1,6 +1,7 @@
 services:
   pfdb:
     image: bianjp/mariadb-alpine:latest
+    mem_limit: 550m
     environment:
       MYSQL_ROOT_PASSWORD: $MYSQL_PASSWORD
     networks:
@@ -15,6 +16,7 @@ services:
     restart: always
   pf-migrate-standalone:
     image: bianjp/mariadb-alpine:latest
+    mem_limit: 384m
     env_file:
       - .env
     environment:
@@ -36,7 +38,8 @@ services:
 
   pf-redis:
     image: redis:6.2.5-alpine3.14
-    command: ["redis-server", "--appendonly", "yes"]
+    mem_limit: 150m
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
     container_name: redis
     volumes:
       - redis_data:/data
@@ -51,6 +54,7 @@ services:
     restart: always
   pf-socket:
     container_name: pf-socket
+    mem_limit: 200m
     build:
       context: .
       dockerfile: Dockerfile.websocket
@@ -70,6 +74,7 @@ services:
     restart: always
   pf:
     container_name: pathfinder
+    mem_limit: 400m
     build: .
     image: pathfinder:local
     env_file:
@@ -109,6 +114,7 @@ services:
     restart: always
   pf-daemon:
     container_name: pathfinder-daemon
+    mem_limit: 200m
     build: .
     image: pathfinder:local
     env_file:
@@ -138,6 +144,7 @@ services:
   traefik:
     image: traefik:v2.11
     container_name: traefik
+    mem_limit: 100m
     command:
       - "--log.level=ERROR"
       - "--api.insecure=true"
@@ -166,6 +173,7 @@ services:
   pf-cron:
     image: docker:cli
     container_name: pathfinder-cron
+    mem_limit: 64m
     networks:
       - pf
     volumes:
