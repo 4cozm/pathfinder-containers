@@ -70,6 +70,7 @@
 - **전투 로그:** 전투 로그 분석 요청 및 WebSocket 브로드캐스트
 - **실시간 토큰:** websocket 모듈 실시간 토큰 대응
 - **스탠드얼론 UI:** 스탠드얼론 디자인 완료, dmc_helper UI 개편·문서 반영
+- **웜홀 메모 토스트:** 시스템 `description`(Summernote 메모)을 웜홀(`statics`) 신규 생성 시 시스템 헤드 위 말풍선 토스트로 10초 표시. WS 경로에서는 즉시 전파되고, WS 장애 시 Ajax polling 주기에 맞춰 반영
 
 ---
 
