@@ -40,7 +40,7 @@
 - **선택(스탠드얼론·Discord):**  
   `PF_STANDALONE_SECRET`, `PF_PING_JWT_SECRET`, `DISCORD_TO_PF_HMAC`, `DISCORD_ALERT_WEBHOOK_URL`
 - **선택(SMTP):** `SMTP_*` 항목들
-- **Redis:** `REDIS_DSN=tcp://redis:6379` 추가
+- **Redis:** `REDIS_DSN=tcp://redis:6379` 추가 (+ Pathfinder는 Redis 접근 시 `Predis\Client`를 사용하므로 `predis/predis` 의존성이 필요)
 
 ---
 
