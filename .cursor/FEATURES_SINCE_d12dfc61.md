@@ -65,6 +65,7 @@
 
 - **맵 페이지 통신:** 주기적 API(맵 데이터/유저 데이터) + WebSocket으로 서버와 실시간 통신
 - **맵 WS 진단 로그:** 맵 페이지·SharedWorker 콘솔에 `[PF][MapWS]` 접두사로 WS 연결/끊김/재연결·`mapSubscriptions`(스로틀) 로그 — 문제 보고 시 공유용(토큰 미포함)
+- **PHP→소켓 TCP 타임아웃:** PHP 내부 TCP 클라이언트(`TcpSocket` 기본 `timeout`) 및 Setup TCP 헬스체크를 **2초**로 상향(기존 1s / Setup 0.6s 대비) — 호스트 지연·부하 시 연결 실패 완화
 - **맵 편집 권한:** 편집 권한이 있으면 연결/시스템 삭제 허용
 - **어드민:** 어드민 기능 추가
 - **전투 집계·알림:** 전투 집계 API, WS 브로드캐스트, 프론트 토스트
@@ -77,6 +78,7 @@
 
 ## 7. 웹소켓 서비스
 
+- **PHP 8 경고 완화(서버):** `AbstractMessageComponent::addConnection`에 연결 메타 `data` 초기화, `MapUpdate`의 `checkCharacterAccess` / `checkMapAccess`에서 미등록 키·비배열 엔트리 안전 처리(Undefined array key 등)
 - **Dockerfile.websocket:** PHP 8.3-cli-alpine 기반, sockets/pcntl/zip/bz2/pdo_mysql, Composer, `websocket` 서브모듈 빌드
 - **이미지:** 로컬 빌드 `pf-websocket:local`, 컨테이너명 `pf-socket`
 - **경로:** `./websocket` 서브모듈, `entrypoint.sh` → `php cmd.php`
