@@ -65,6 +65,7 @@
 
 - **맵 페이지 통신:** 주기적 API(맵 데이터/유저 데이터) + WebSocket으로 서버와 실시간 통신
 - **맵 WS 진단 로그:** 맵 페이지·SharedWorker 콘솔에 `[PF][MapWS]` 접두사로 WS 연결/끊김/재연결·`mapSubscriptions`(스로틀) 로그 — 문제 보고 시 공유용(토큰 미포함)
+- **맵 실시간 갱신 안정화:** WS `onOpen`마다 `getAccessData`로 토큰 재발급 후 `subscribe`, 성공 시 강제 `updateMapData` Ajax로 단절 구간 보정; 토큰 실패 시 Ajax 폴백. 소켓 서버 `mapAccess` TTL **300초**, `setAccess`는 WS 연결만 있으면 구독 목록 유지(characterData 미도달 시에도 제외하지 않음)
 - **PHP→소켓 TCP 타임아웃:** PHP 내부 TCP 클라이언트(`TcpSocket` 기본 `timeout`) 및 Setup TCP 헬스체크를 **2초**로 상향(기존 1s / Setup 0.6s 대비) — 호스트 지연·부하 시 연결 실패 완화
 - **맵 편집 권한:** 편집 권한이 있으면 연결/시스템 삭제 허용
 - **어드민:** 어드민 기능 추가
