@@ -95,13 +95,21 @@
 
 ---
 
-## 9. 참고 — 주요 파일·경로
+## 9. EVE ESI / SSO 문서
+
+- **문서:** [docs/EVE_API_AND_SSO.md](../docs/EVE_API_AND_SSO.md) — `esi.evetech.net`·SSO URL, Pathfinder에서 쓰는 `ccpClient`/`ssoClient` 핸들러, JWT는 JWKS 로컬 검증(`v2/oauth/verify` 미사용), `pathfinder_esi` **v2.1.4**(게시 2024-03-16)의 정적 `$spec`에 **`meta.status` → `/status.json`** 등이 남아 있으면 CCP 폐기 후 깨질 수 있음을 명시
+- **선택 패치:** `pathfinder/patches/pathfinder_esi-v2.1.4-ccp-endpoints.patch` — `meta/status`·`v2/oauth/verify` 갱신 예시(프로덕션에서 스펙·동작 검증 후 적용)
+
+---
+
+## 10. 참고 — 주요 파일·경로
 
 - **빌드·실행:** `pws.ps1` (Windows), `pws.sh` (Linux), `scripts/setup-ubuntu24.sh` (Ubuntu 24)
 - **백업·복원:** `backup_db.sh`, `restore_db.sh`, `backups/`
 - **마이그레이션:** `scripts/migrate-standalone-detect.sh`, pathfinder 서브모듈 `export/sql/standalone_detect_*.sql`
 - **설정:** `.env.example`, `config/pathfinder/pathfinder.ini`, `config/pathfinder/environment.ini`
 - **스키마 패치:** `scripts/patch-schema-dt-json.php` (필요 시)
+- **EVE API/SSO:** [docs/EVE_API_AND_SSO.md](../docs/EVE_API_AND_SSO.md), `pathfinder/patches/`
 
 ---
 

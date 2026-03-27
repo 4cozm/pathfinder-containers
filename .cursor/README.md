@@ -13,4 +13,5 @@
 |------|------|
 | **README.md** (본 문서) | .cursor 개요 및 AI 필수 안내 |
 | **FEATURES_SINCE_d12dfc61.md** | 커밋 `d12dfc61` 대비 현재 저장소에 추가된 기능·변경 사항 정리 (새로 만든 기능 안내) |
+| **[docs/EVE_API_AND_SSO.md](../docs/EVE_API_AND_SSO.md)** | EVE ESI·SSO URL, `pathfinder_esi` 정적 라우트·선택 패치 안내 |
 | **rules/** | Cursor 규칙 (.mdc) — 코드 수정 시 문서 최신화 등 |
