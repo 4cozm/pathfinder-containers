@@ -8,6 +8,11 @@ A fork of techfreak's [Pathfinder-container](https://gitlab.com/techfreak/pathfi
 1. [Installation](#installation)
 1. [Using Traefik](#using-traefik)
 1. [Development](#development)
+1. [EVE ESI / SSO](#eve-esi--sso)
+
+## EVE ESI / SSO
+
+Pathfinder가 호출하는 **ESI**(`https://esi.evetech.net`)·**SSO**(`https://login.eveonline.com`) 엔드포인트, JWT 검증 방식, `pathfinder_esi` 정적 라우트 맵 및 선택 패치는 [docs/EVE_API_AND_SSO.md](docs/EVE_API_AND_SSO.md)를 참고하세요.
 
 ## Installation
 
