@@ -118,7 +118,8 @@ if [ "$SKIP_DOCKER" = false ]; then
         docker-compose build --no-cache
         docker-compose up -d
     else
-        docker-compose up --build -d
+        docker-compose build
+        docker-compose up -d
     fi
     
     write_ok "Containers restarted"
