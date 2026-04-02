@@ -16,3 +16,6 @@ node_modules/
 *.dll
 *.exe
 *.pdb
+*.br
+*.gz
+*.map
