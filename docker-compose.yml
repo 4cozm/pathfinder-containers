@@ -39,7 +39,7 @@ services:
   pf-redis:
     image: redis:6.2.5-alpine3.14
     mem_limit: 150m
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
     container_name: redis
     volumes:
       - redis_data:/data
@@ -50,7 +50,10 @@ services:
         aliases:
           - "$REDIS_HOST"
     logging:
-      driver: none
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: always
   pf-socket:
     container_name: pf-socket
