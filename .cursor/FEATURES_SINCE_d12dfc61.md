@@ -14,6 +14,7 @@
 | **www 서브도메인** | Traefik 라우터에서 www 제거·단순화 (호스트 규칙만 사용) | `docker-compose.yml` |
 | **Ubuntu 24 한 방 설정** | Ubuntu 22/24에서 Docker·의존성·저장소 클론·설정까지 한 번에 수행 | `scripts/setup-ubuntu24.sh` |
 | **Windows 빌드 스크립트** | Node 12 + npm + gulp 빌드 후 Docker 기동 (선택적 검증) | `pws.ps1` |
+| **서브모듈 gitlink** | 상위 저장소의 `pathfinder` 서브모듈 SHA는 반드시 `github.com/4cozm/pathfinder` 등 원격에 존재하는 커밋이어야 함 (없는 SHA면 `upload-pack: not our ref`로 `git pull --recurse-submodules` 실패) | `pathfinder` (gitlink) |
 | **Linux 배포 스크립트** | Linux에서 빌드·배포 파이프라인 | `pws.sh` |
 | **Traefik 업그레이드** | v2.3 → v2.11, 라우터 규칙 정리 | `docker-compose.yml` |
 | **환경 파일 보호** | `.env`, `environment.ini` 등 git 추적 제외 | `.gitignore` |
