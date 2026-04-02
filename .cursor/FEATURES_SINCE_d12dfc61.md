@@ -28,7 +28,8 @@
 | **pf-daemon** | `standalone-daemon.php` 10초 주기 실행 | pathfinder 서브모듈의 스탠드얼론 데몬 |
 | **pf-cron** | 매일 `backup_db.sh` 실행 | docker:cli 이미지, crond 사용 |
 | **메모리 제한** | pfdb 550m, redis 150m, pf-socket 200m, pf 400m, pf-daemon 200m, traefik 100m, pf-cron 64m | OOM 방지·리소스 예측 가능 |
-| **Redis 정책** | `maxmemory 128mb`, `allkeys-lru` | 메모리 상한·축소 정책 |
+| **Redis 정책** | `maxmemory 128mb`, `volatile-lru` (TTL 있는 키만 축출) | 기존 `allkeys-lru`는 세션 키 일괄 축출 → 전체 403 유발 가능성 있어 변경 |
+| **Redis 로깅** | `json-file` 드라이버, max 10MB×3 파일 | 기존 `driver: none`으로 장애 시 원인 추적 불가 문제 해결 |
 | **공유 볼륨** | `pf_tmp`, `standalone_ticket`, `./logs` 등 | 웹·소켓·데몬 간 일관된 경로 |
 | **environment.ini** | `config/pathfinder/environment.ini` → `templateEnvironment.ini` 마운트 | 스탠드얼론·Discord 등 선택 설정 |
 
