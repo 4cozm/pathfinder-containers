@@ -28,11 +28,29 @@
 | **pf-migrate-standalone** | standalone_detect(유저 관계도)용 테이블 1회 마이그레이션 | `standalone_detect_characters.sql`, `standalone_detect_log.sql`, `scripts/migrate-standalone-detect.sh` |
 | **pf-daemon** | `standalone-daemon.php` 10초 주기 실행 | pathfinder 서브모듈의 스탠드얼론 데몬 |
 | **pf-cron** | 매일 `backup_db.sh` 실행 | docker:cli 이미지, crond 사용 |
-| **메모리 제한** | pfdb 550m, redis 150m, pf-socket 200m, pf 400m, pf-daemon 200m, traefik 100m, pf-cron 64m | OOM 방지·리소스 예측 가능 |
+| **메모리 제한** | pfdb 550m, redis 150m, pf-socket 200m, pf **500m**, pf-daemon 200m, traefik 100m, pf-cron 64m | pf는 PHP-FPM worker 20개 수용을 위해 400m→500m 상향 |
 | **Redis 정책** | `maxmemory 128mb`, `volatile-lru` (TTL 있는 키만 축출) | 기존 `allkeys-lru`는 세션 키 일괄 축출 → 전체 403 유발 가능성 있어 변경 |
 | **Redis 로깅** | `json-file` 드라이버, max 10MB×3 파일 | 기존 `driver: none`으로 장애 시 원인 추적 불가 문제 해결 |
 | **공유 볼륨** | `pf_tmp`, `standalone_ticket`, `./logs` 등 | 웹·소켓·데몬 간 일관된 경로 |
 | **environment.ini** | `config/pathfinder/environment.ini` → `templateEnvironment.ini` 마운트 | 스탠드얼론·Discord 등 선택 설정 |
+
+---
+
+## 2-1. PHP-FPM 안정화 (3~4시간 주기 403 재발 방지)
+
+**증상:** ESI/CCP 응답 지연 시 PHP-FPM worker가 session lock을 선점한 채 최대 300초 대기 → worker 점진적 포화 → 3~4시간 후 전체 403 발생 → nginx(컨테이너) 재시작 시 일시 해소 반복
+
+| 설정 | 변경 전 | 변경 후 | 효과 |
+|------|---------|---------|------|
+| `request_terminate_timeout` | 300s | **60s** | stuck worker를 5분→1분 내 강제 종료·슬롯 반환 |
+| `session.save_path` | `tcp://host:port` | `…?lock_expire=30&lock_wait_time=50000&lock_retries=300` | session lock TTL 30초 자동 만료, 최대 15초 대기 후 포기 |
+| `session.gc_maxlifetime` | 1440s (24분) | **7200s (2시간)** | 세션 조기 만료 방지 |
+| `pm.max_children` | 12 | **20** | stuck worker 누적 여유 확보 |
+| `pm.max_requests` | 500 | **200** | worker 더 자주 재활용 → 메모리 누수 완화 |
+
+**nginx 에러 로그 영속화:** `site.conf`에 `error_log /var/log/nginx/error.log warn;` 추가, `docker-compose.yml`에 `./logs/nginx:/var/log/nginx` 볼륨 마운트 → 컨테이너 재시작 후에도 nginx 에러 로그 보존
+
+관련 파일: `static/php/php.ini`, `static/php/fpm-pool.conf`, `static/nginx/site.conf`, `docker-compose.yml`, `development/php.development.ini`
 
 ---
 
