@@ -1,6 +1,6 @@
 # EVE ESI / SSO 사용 현황 (pathfinder-containers)
 
-Pathfinder 앱은 [goryn-clade/pathfinder](https://github.com/goryn-clade/pathfinder) 서브모듈을 통해 EVE **ESI**(`https://esi.evetech.net`)와 **SSO**(`https://login.eveonline.com`)를 사용합니다.  
+Pathfinder 앱은 [4cozm/pathfinder](https://github.com/4cozm/pathfinder) 서브모듈을 통해 EVE **ESI**(`https://esi.evetech.net`)와 **SSO**(`https://login.eveonline.com`)를 사용합니다.  
 실제 HTTP 클라이언트는 Composer 의존성 **`goryn-clade/pathfinder_esi` 2.1.4** ([GitHub 릴리스 v2.1.4](https://github.com/goryn-clade/pathfinder_esi/releases/tag/v2.1.4), **게시일 2024-03-16**)입니다.
 
 엔드포인트 경로는 **런타임에 swagger를 받아 오는 방식이 아니라**, 라이브러리 소스의 **정적 배열**(`Exodus4D\ESI\Config\Ccp\Esi\Config::$spec`)에 하드코딩되어 있습니다. CCP가 OpenAPI 3.x로 전환·구 `swagger.json`·`/status.json` 등을 폐기한 뒤에는 **이 맵을 최신 스펙에 맞게 갱신**(업스트림 릴리스, Fork, 또는 `vendor` 패치)해야 합니다.
