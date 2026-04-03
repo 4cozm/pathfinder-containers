@@ -77,7 +77,7 @@ services:
     restart: always
   pf:
     container_name: pathfinder
-    mem_limit: 400m
+    mem_limit: 500m
     build: .
     image: pathfinder:local
     env_file:
@@ -108,6 +108,7 @@ services:
       - ./config/pathfinder/plugin.ini:/var/www/html/pathfinder/app/plugin.ini
       - ./config/pathfinder/environment.ini:/var/www/html/pathfinder/app/templateEnvironment.ini:ro
       - ./logs:/var/www/html/pathfinder/history/map
+      - ./logs/nginx:/var/log/nginx
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     depends_on:
