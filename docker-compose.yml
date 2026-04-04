@@ -8,6 +8,11 @@ services:
       pf:
         aliases:
           - "$MYSQL_HOST"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - db_data:/var/lib/mysql
       - ./pathfinder/export/sql/eve_universe.sql.zip:/eve_universe.sql.zip
@@ -31,7 +36,8 @@ services:
       - ./scripts/migrate-standalone-detect.sh:/migrate.sh:ro
     entrypoint: ["sh", "/migrate.sh"]
     depends_on:
-      - pfdb
+      pfdb:
+        condition: service_healthy
     restart: "no"
     networks:
       - pf
@@ -113,9 +119,12 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     depends_on:
-      - pfdb
-      - pf-redis
-      - pf-socket
+      pfdb:
+        condition: service_healthy
+      pf-redis:
+        condition: service_started
+      pf-socket:
+        condition: service_started
     restart: always
   pf-daemon:
     container_name: pathfinder-daemon
@@ -139,9 +148,12 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     depends_on:
-      - pfdb
-      - pf-redis
-      - pf-socket
+      pfdb:
+        condition: service_healthy
+      pf-redis:
+        condition: service_started
+      pf-socket:
+        condition: service_started
     restart: always
     working_dir: /var/www/html/pathfinder
     command: ["php", "/var/www/html/pathfinder/standalone-daemon.php", "10"]
