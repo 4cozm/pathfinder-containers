@@ -5,6 +5,9 @@ set -e
 chown -R nobody:nobody /var/log/nginx /var/lib/nginx
 chmod -R 755 /var/log/nginx /var/lib/nginx
 
+# Fix PHP app logs permission for Docker bind mounts
+chown -R nobody:nobody /var/www/html/pathfinder/logs /var/www/html/pathfinder/tmp
+chmod -R 775 /var/www/html/pathfinder/logs /var/www/html/pathfinder/tmp
 crontab /var/crontab.txt
 envsubst '${DOMAIN} ${PATHFINDER_SOCKET_HOST}' </etc/nginx/templateSite.conf >/etc/nginx/sites_enabled/site.conf
 envsubst '$PATHFINDER_SOCKET_HOST' </etc/nginx/templateNginx.conf >/etc/nginx/nginx.conf
