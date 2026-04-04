@@ -108,6 +108,7 @@ services:
       - ./config/pathfinder/plugin.ini:/var/www/html/pathfinder/app/plugin.ini
       - ./config/pathfinder/environment.ini:/var/www/html/pathfinder/app/templateEnvironment.ini:ro
       - ./logs:/var/www/html/pathfinder/history/map
+      - ./logs/app:/var/www/html/pathfinder/logs
       - ./logs/nginx:/var/log/nginx
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
