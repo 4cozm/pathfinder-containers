@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -e
+
+# Fix nginx directory permissions (Root Cause of 403)
+chown -R nobody:nobody /var/log/nginx /var/lib/nginx
+chmod -R 755 /var/log/nginx /var/lib/nginx
+
 crontab /var/crontab.txt
 envsubst '${DOMAIN} ${PATHFINDER_SOCKET_HOST}' </etc/nginx/templateSite.conf >/etc/nginx/sites_enabled/site.conf
 envsubst '$PATHFINDER_SOCKET_HOST' </etc/nginx/templateNginx.conf >/etc/nginx/nginx.conf
