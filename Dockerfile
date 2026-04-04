@@ -25,4 +25,5 @@ RUN (test -d /var/www/html/pathfinder/public/js/v2.2.4 && find /var/www/html/pat
 # Inject the fixed entrypoint.sh and nginx.conf
 COPY static/entrypoint.sh /entrypoint.sh
 COPY static/nginx/nginx.conf /etc/nginx/templateNginx.conf
+COPY static/nginx/site.conf /etc/nginx/templateSite.conf
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
