@@ -22,8 +22,11 @@ RUN (test -d /var/www/html/pathfinder/public/js/v2.2.4 && find /var/www/html/pat
  && mkdir -p /var/www/html/pathfinder/tmp \
  && chmod -R 777 /var/www/html/pathfinder/tmp
 
-# Inject the fixed entrypoint.sh and nginx.conf
+# Inject the fixed entrypoint.sh, nginx.conf, and PHP configurations
 COPY static/entrypoint.sh /entrypoint.sh
 COPY static/nginx/nginx.conf /etc/nginx/templateNginx.conf
 COPY static/nginx/site.conf /etc/nginx/templateSite.conf
+COPY static/php/fpm-pool.conf /etc/php7/php-fpm.d/zzz_custom.conf
+COPY static/php/php.ini /etc/zzz_custom.ini
+COPY static/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
