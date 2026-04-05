@@ -72,5 +72,11 @@ section "14. PATHFINDER KEYWORDS"
 run "docker logs --since ${SINCE} ${APP_CONTAINER} 2>&1 | egrep -i 'php-fpm|SIGKILL|OOM|MySQL server has gone away|server reached pm.max_children|pool seems busy|error|warning|fatal' | tail -n ${TAIL_LINES}"
 run "docker exec ${APP_CONTAINER} sh -lc 'tail -n ${TAIL_LINES} /var/log/nginx/error.log | egrep -i \"upstream|reset by peer|timed out|502|503|504|500\"'"
 
-section "15. DONE"
-echo "Collected debug information for ${APP_CONTAINER}"
+section "15. PATHFINDER APP LOGS"
+run "docker exec ${APP_CONTAINER} sh -lc 'ls -lh /var/www/html/pathfinder/logs/ && tail -n ${TAIL_LINES} /var/www/html/pathfinder/logs/*.log 2>/dev/null'"
+
+section "16. WEBSOCKET LOGS"
+run "docker logs --since ${SINCE} pf-socket | tail -n ${TAIL_LINES}"
+
+section "17. PHP ERROR LOG / MAX_INPUT_VARS CHECK"
+run "docker exec ${APP_CONTAINER} sh -lc 'tail -n ${TAIL_LINES} /var/log/php7/error.log | egrep -i \"max_input_vars|memory_limit|timeout\"'"
