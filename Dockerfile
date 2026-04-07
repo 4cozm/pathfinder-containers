@@ -3,7 +3,7 @@ FROM ghcr.io/goryn-clade/pathfinder:latest
 # 로컬 composer.lock 기준으로 vendor 갱신 (베이스 이미지 vendor만 쓰면 DT_JSON 등 누락 가능)
 # pws.ps1/루트 빌드용. 수동 빌드는 pathfinder.Dockerfile에서 동일 DT_JSON 패치 적용함.
 COPY ./pathfinder/composer.json ./pathfinder/composer.lock /var/www/html/pathfinder/
-RUN apk add --no-cache curl unzip \
+RUN apk add --no-cache curl unzip fcgi \
  && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
  && cd /var/www/html/pathfinder && rm -rf vendor && composer install --no-dev --no-scripts --no-interaction \
  && apk del curl unzip
