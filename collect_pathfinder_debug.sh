@@ -114,3 +114,27 @@ done
 section "18. HOST OOM / KERNEL KILL SIGNS (OPTIONAL)"
 run "dmesg -T 2>/dev/null | egrep -i 'killed process|out of memory|oom' | tail -n ${TAIL_LINES}"
 run "journalctl -k --since '-${SINCE}' 2>/dev/null | egrep -i 'killed process|out of memory|oom' | tail -n ${TAIL_LINES}"
+
+section "19. PHP-FPM STATUS (DIRECT)"
+# active=0 은 정상 유휴 상태일 수 있음. listen queue > 0 일 때만 worker 포화로 해석권장.
+run "docker exec ${APP_CONTAINER} sh -lc 'SCRIPT_NAME=/fpm-status SCRIPT_FILENAME=/fpm-status QUERY_STRING=json REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 || echo \"cgi-fcgi failed (check if fcgi package is installed)\"'"
+
+section "20. DB FULL PROCESSLIST (LOCK CHECK)"
+# 목록이 깨끗하다고 해서 앱 로직 부하로 단정 금지. 단지 DB 병목 가능성이 낮음을 시사.
+run "docker exec ${DB_CONTAINER} sh -lc 'mysql -uroot -prootpass -e \"SHOW FULL PROCESSLIST;\"'"
+
+section "21. KERNEL TCP STATS (OVERFLOW/DROP)"
+# ListenDrops 는 커널 레벨 드랍임. Nginx/App 레벨의 refused와는 별개로 분석 요망.
+run "docker exec ${APP_CONTAINER} sh -lc 'netstat -s | grep -Ei \"listen|drop|overflow\"'"
+
+section "22. LISTEN PORT STATE (SS)"
+# 프로세스가 실제로 포트를 점유하고 있는지(Listening) 최종 확인.
+run "docker exec ${APP_CONTAINER} sh -lc 'ss -lntp 2>/dev/null | grep -E \"(80|9000|8020)\"'"
+
+section "23. FATAL/MEMORY ERROR LOG (DETAILED)"
+# memory_limit exhausted 등의 명시적 로그가 있을 때만 앱 자폭 가설을 확정함.
+run "docker exec ${APP_CONTAINER} sh -lc 'grep -Ei \"fatal|memory_limit|exhausted|segfault|sigsegv\" /var/log/php*/error.log /var/log/nginx/error.log 2>/dev/null | tail -n ${TAIL_LINES}'"
+
+section "24. 3-SHOT LIVE STATS (TRENDING)"
+# 단독 확정 근거로 사용 금지. 자원 사용량의 급격한 증감 추이(Trend) 확인용.
+run "for i in 1 2 3; do echo \"--- Sample \$i (\$(date +%T))\"; docker stats --no-stream --format \"table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}\"; sleep 5; done"
