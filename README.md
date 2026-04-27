@@ -1,172 +1,94 @@
-# Pathfinder Containers
+# Pathfinder Containers (DMC Orchestration)
 
-[![Docker Image Master Branch](https://github.com/goryn-clade/pathfinder-containers/actions/workflows/docker-image.yml/badge.svg?branch=master)](https://github.com/goryn-clade/pathfinder-containers/actions/workflows/docker-image.yml)
+**Pathfinder 코어와 확장 시스템(WebSocket, Standalone Bridge)의 통합 배포 및 운영 자동화 시스템**
+- PHP 웹 서비스, Node.js WebSocket 서버, MariaDB, Redis를 컨테이너 단위로 구조화하여 Traefik 역방향 프록시를 통해 제공
 
+## 1. 왜 이 프로젝트가 필요한가
+- **배포 복잡성 해소:** PHP-FPM, Nginx, Redis, WebSocket 서버 등 다수의 의존성 서비스를 수동으로 설정할 때 발생하는 환경 파편화 문제 해결.
+- **운영 안정성 결여:** 프로세스 모니터링 부재로 인한 서비스 중단 및 수동 백업에 따른 데이터 유실 위험 제거.
+- **확장 기능 통합:** "DMC Helper" 등 로컬 연동 기능을 위한 데이터베이스 스키마와 소켓 서버 설정을 코어 서비스와 함께 일관되게 관리.
 
-A fork of techfreak's [Pathfinder-container](https://gitlab.com/techfreak/pathfinder-container/) docker-compose solution for Pathfinder that is designed to work with this project's [Pathfinder fork](https://github.com/4cozm/pathfinder), using [Traefik](https://traefik.io/) as a reverse proxy to expose the docker container.
+## 2. 핵심 제약
+- **하드웨어 리소스 제한:** 저사양 VPS 환경 운영을 전제로 하며, 서비스별 메모리 점유율을 엄격하게 통제해야 함.
+- **보안 요구사항:** EVE Online SSO 인증을 위해 모든 외부 통신은 HTTPS로 강제하며, SSL 인증서 발급이 자동화되어야 함.
+- **데이터 영속성:** 컨테이너 생명주기와 무관하게 세션(Redis), 맵 데이터(DB), 로그 파일이 영구 저장소에 보존되어야 함.
 
-1. [Installation](#installation)
-1. [Using Traefik](#using-traefik)
-1. [Development](#development)
-1. [EVE ESI / SSO](#eve-esi--sso)
+## 3. 해결 전략
+- **Docker-Compose 기반 오케스트레이션:** 모든 서비스를 컨테이너화하고 내부 네트워크(pf)와 외부 네트워크(web)를 분리하여 보안 계층화.
+- **리소스 쿼터 할당:** `mem_limit` 설정을 통해 특정 서비스의 이상 동작이 전체 시스템 가용성에 영향을 주지 않도록 격리.
+- **데이터베이스 프로비저닝 자동화:** `pf-migrate-standalone` 서비스를 도입하여 확장 기능용 테이블 DDL을 배포 시점에 자동 실행.
+- **SSL 자동화:** Traefik과 Let's Encrypt를 통합하여 도메인 기반 라우팅 및 인증서 관리 자동화.
 
-## EVE ESI / SSO
+## 4. 아키텍처 / 데이터 흐름
 
-Pathfinder가 호출하는 **ESI**(`https://esi.evetech.net`)·**SSO**(`https://login.eveonline.com`) 엔드포인트, JWT 검증 방식, `pathfinder_esi` 정적 라우트 맵 및 선택 패치는 [docs/EVE_API_AND_SSO.md](docs/EVE_API_AND_SSO.md)를 참고하세요.
-
-## Installation
-
-**Prerequisites**:
-* [docker](https://docs.docker.com/)
-* [docker-compose](https://docs.docker.com/)
-
-> **Note**: The Docker-compose file uses Compose v3.8, so requires Docker Engine 19.03.0+
-
-</br>
-
-
-1. **Create an API-Key**
-    * Go the [Eve Online Developer portal](https://developers.eveonline.com/)
-    * After signing in go to "MANAGE APPLICATIONS" → "CREATE NEW APPLICATION"
-    * Choose a name for your application (e.g. "Pathfinder Production")
-    * Enter a Description for this installation
-    * Change "CONNECTION TYPE" to "Authentication & API Access"
-    * Add the following "PERMISSIONS":
-      * `esi-location.read_online.v1`
-      * `esi-location.read_location.v1`
-      * `esi-location.read_ship_type.v1`
-      * `esi-ui.write_waypoint.v1`
-      * `esi-ui.open_window.v1`
-      * `esi-universe.read_structures.v1`
-      * `esi-corporations.read_corporation_membership.v1`
-      * `esi-clones.read_clones.v1`
-      * `esi-characters.read_corporation_roles.v1`
-      * `esi-search.search_structures.v1`
-    * Set your "CALLBACK URL" to `https://[YOUR_DOMAIN]/sso/callbackAuthorization`</br></br>
-  
-  
-1. **Clone the repo**
-    ```shell
-    git clone --recurse-submodules  https://github.com/goryn-clade/pathfinder-containers.git
-    ```
-
-1. **Create a *.env* file (copy .env.example) and make sure every config option has an entry.**
-    ```shell
-    PROJECT_ROOT=""       # The path of the cloned repo
-    CONTAINER_NAME="pf"   # docker container name prefix
-    DOMAIN=""             # The domain you will be using
-    APP_PASSWORD=""       # Password for /setup
-    MYSQL_HOST="mariadb"  # mysql host
-    MYSQL_PORT="3306"     # default mysql port
-    MYSQL_USER="root"     # mysql root user
-    MYSQL_PASSWORD=""     # mysql Password
-    CCP_SSO_CLIENT_ID=""  # Use the SSO tokens created in step 1
-    CCP_SSO_SECRET_KEY=""
-    CCP_ESI_SCOPES="esi-location.read_online.v1,esi-location.read_location.v1,esi-location.read_ship_type.v1,esi-ui.write_waypoint.v1,esi-ui.open_window.v1,esi-universe.read_structures.v1,esi-corporations.read_corporation_membership.v1,esi-clones.read_clones.v1,esi-characters.read_corporation_roles.v1"
-    MYSQL_PF_DB_NAME="pathfinder" # mysql pathfinder table name
-    MYSQL_UNIVERSE_DB_NAME="eve_universe"
-    MYSQL_CCP_DB_NAME="eve_lifeblood_min"
-    REDIS_HOST="redis"    # redis host
-    REDIS_PORT="6379"     # default redis port
-    PATHFINDER_SOCKET_HOST="pathfinder-socket" # domain of the websocket container, relative to the main pf container
-    PATHFINDER_SOCKET_PORT="5555"              # default tcp socket port
-    SMTP_HOST=""
-    SMTP_PORT=""
-    SMTP_SCHEME=""
-    SMTP_USER=""
-    SMTP_PASS=""
-    SMTP_FROM=""
-    SMTP_ERROR=""
-> The `PROJECT_ROOT` key is the *absolute* path to the project directory, ie if you have clone it to /app/pathfinder-containers, this is the value you should enter. If you're unsure of the absolute path, you can use the command `pwd` to get the full absolute path of the current directory.
-
-1. **Edit the *config/pathfinder/pathfinder.ini*** to your liking
-
-    Recommended options to change:
-    * `[PATHFINDER]`
-        * `NAME`- the tab title when viewing your Pathfinder
-    * `[PATHFINDER.LOGIN]`
-        * `COOKIE_EXPIRE` - expire age (in days) for login cookies. [read more](https://github.com/exodus4d/pathfinder/issues/138#issuecomment-216036606)
-        * `SESSION_SHARING` - Share maps between logged in characters in the same browser session. [read more](https://github.com/goryn-clade/pathfinder/releases/tag/v2.1.1)
-        * `CHARACTER` - Character allow-list. Comma separated string of character ids. (empty = "no restriction")
-        * `CORPORATION` - Corporation allow-list. Comma separated string of corporation ids. (empty = "no restriction")
-        * `ALLIANCE` - Alliance allow-list. Comma separated string of alliance ids. (empty = "no restriction")
-    * `[PATHFINDER.MAP.PRIVATE]`, `[PATHFINDER.MAP.PRIVATE]`, `[PATHFINDER.MAP.ALLIANCE]`
-        * `LIFETIME` - expire time (in days) until a map type will be deleted (by cronjob)    
-</br></br>
-
-    
-1. **Build & Run it**
-    ```shell
-    docker network create web && docker-compose up -d
-    ```
-
-1. **Open the http://< your-domain >/setup page.**
-   * Your username is `pf` and password is the password you set in `APP_PASSWORD` in the *.env* file.
-   * Find the database section of the setup page, for both "pf" and "eve_universe" databases click the **"create database"** button. 
-   * Once the page has reloaded, click the **"setup tables"**, and then **"fix columns/keys"**.
-</br></br>
-
-1. **Go back to your console and insert the eve universe dump with this command:**
-    ```shell
-    docker-compose exec pfdb /bin/sh -c "unzip -p eve_universe.sql.zip | mysql -u root -p\$MYSQL_ROOT_PASSWORD eve_universe";
-
-1. **When everthing works, configure Traefik correctly for production**
-    * Remove the staging CA server line  from `docker-compose.yml`from the `command` block of the traefik service definition. 
-    * Delete the `./letsencrypt/acme.json` configuration file so Let's Encrypt will get a new certificate.</br></br>
-    * If you are not the root user on your host you may need to edit file permissions. Docker-engine creates the `letsencrypt` director as root user, which means that you would need to prefix `sudo` on any future docker commands (`sudo docker-compose up` etc). To avoid doing this you can take ownership of the letsencrypt directory by running `sudo chown -R $USER ./letsencrypt`.
-
-
-> Hint: If you need to make changes, perform your edits first, then do `docker-compose down` to bring down the project, and then `docker-compose up --build -d` to rebuild the containers and run them again.
-
-</br>
-
----
-</br>
-
-### Using Traefik
-
-To keep things simple, the structure of this project assumes that you will use Traefik to provide access to your Pathfinder docker container and nothing else. As such, Traefik containers start and stop with the Pathfinder containers. 
-
-If you want to run other services in docker on the same host that also need to be exposed to the web, you should strongly consider splitting Traefik into a separate project with its own docker-compose file. This will allow you to take pathfinder project offline for maintenance without affecting other containers that rely on Traefik.
-
-</br>
-
----
-
-</br>
-
-## Development
-
-Some Development configurations that have worked well for me have been saved in the `development/` directory, including step debugging for VsCode using [xdebug](https://xdebug.org/)
-
-Development configs and docker files can be quickly restored using: 
-
-
- ```shell
-chmod +x ./development/development.sh && ./development/development.sh
+```ascii
+[External Request]
+      |
+[Traefik (SSL Termination / Routing)]
+      |
+      +----(HTTP 80/443)----> [Nginx (Pathfinder App)]
+      |                           |
+      |                     [PHP-FPM (Core Logic)] <-----> [Redis (Cache/Session)]
+      |                           |
+      |                           +----------------------> [MariaDB (Main Storage)]
+      |
+      +----(WebSocket 5555)--> [Node.js (PF-Socket)] <-----> [MariaDB (Migration Data)]
 ```
 
-This creates a partial `.env` file, but you will need to add your CCP SSO client and keys manually, if you want to copy development files without overwriting your .env file add the flag `--noenv` when running the script.
+## 5. 설치 및 초기 설정 (Installation)
 
-It's best to create a new SSO application for development work, so that you can set the callback url to `https://localhost/sso/callbackAuthorization`.
+### 5.1 사전 준비
+1. **EVE Developer Portal**에서 새로운 Application 생성
+   - **Connection Type:** Authentication & API Access
+   - **Permissions:** 아래 스코프 필수 포함
+     - `esi-location.read_online.v1`, `esi-location.read_location.v1`, `esi-location.read_ship_type.v1`
+     - `esi-ui.write_waypoint.v1`, `esi-ui.open_window.v1`
+     - `esi-universe.read_structures.v1`, `esi-search.search_structures.v1`
+     - `esi-corporations.read_corporation_membership.v1`, `esi-clones.read_clones.v1`, `esi-characters.read_corporation_roles.v1`
+   - **Callback URL:** `https://[YOUR_DOMAIN]/sso/callbackAuthorization`
 
-</br>
+### 5.2 배포 순서
+1. **저장소 클론 (서브모듈 포함):**
+   ```shell
+   git clone --recurse-submodules https://github.com/goryn-clade/pathfinder-containers.git
+   ```
+2. **환경 변수 설정:** `.env.example`을 복사하여 `.env` 생성 후 `PROJECT_ROOT`(절대 경로), `DOMAIN`, EVE SSO 키 값 입력.
+3. **서비스 실행:**
+   ```shell
+   docker network create web && docker-compose up -d
+   ```
+4. **데이터베이스 초기화:**
+   - `https://[DOMAIN]/setup` 접속 (ID: `pf`, PW: `.env`에 설정한 `APP_PASSWORD`)
+   - `pf`, `eve_universe` 데이터베이스 생성 및 테이블 설정 버튼 클릭.
+5. **Universe Dump 데이터 주입:**
+   ```shell
+   docker-compose exec pfdb /bin/sh -c "unzip -p eve_universe.sql.zip | mysql -u root -p\$MYSQL_ROOT_PASSWORD eve_universe";
+   ```
 
----
+## 6. 주요 구현 포인트
 
-</br>
+### 6.1 리소스 할당 최적화
+- MariaDB(550m), PHP-FPM(500m), WebSocket(200m) 등 런타임 특성에 맞춰 메모리 상한을 할당하여 시스템 전체 안정성 확보.
 
-## Acknowledgments
-*  [exodus4d](https://github.com/exodus4d/) for pathfinder
-* [techfreak](https://gitlab.com/techfreak/pathfinder-container) for the original Pathfinder-container project
-* [johnschultz](https://gitlab.com/johnschultz/pathfinder-container/) for improvements to the traefik config
-* [tyrheimdaleve](https://github.com/TyrHeimdalEVE/pathfinder_esi) for maintaining the pathfinder_esi dependency
+### 6.2 마이그레이션 및 데몬 프로세스
+- `pf-migrate-standalone`: 확장 기능 전용 테이블(`standalone_detect_characters` 등)의 DDL을 자동 관리.
+- `pf-daemon`: 백엔드에서 맵 갱신 및 데이터 정리를 수행하는 `standalone-daemon.php`를 상시 실행 상태로 유지.
 
-## Authors
-* techfreak
-* johnschultz
-* samoneilll
+### 6.3 운영 도구 통합
+- `collect_pathfinder_debug.sh`: 장애 시 컨테이너 로그, 리소스 상태, DB 진단 정보를 즉시 수집하는 자동화 도구.
+- `pf-cron`: 매일 오전 6시 자동 DB 백업 수행 및 결과 로깅.
 
-## License
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+## 7. 트레이드오프와 한계
+- **운영 복잡도 vs 관리 편의성:** Traefik 통합으로 초기 설정은 복잡하나, 운영 단계에서 SSL 갱신 및 서비스 추가가 용이함.
+- **단일 호스트 구조:** 수평적 확장보다는 단일 노드 내에서의 안정적인 운영과 저비용 자가 호스팅에 초점을 맞춤.
 
+## 8. 사용 기술
+- **Orchestration:** Docker Compose
+- **Web/Proxy:** Nginx, Traefik (v2.11)
+- **Database/Cache:** MariaDB, Redis (6.2)
+- **Runtime:** PHP 7.4 (FPM), Node.js (Websocket)
+
+## 9. 라이선스 및 참고
+- 본 프로젝트는 [techfreak/pathfinder-container](https://gitlab.com/techfreak/pathfinder-container/)를 기반으로 한 포크 버전입니다.
+- **License:** MIT License - 상세 내용은 [LICENSE.md](LICENSE.md) 참고.
+- **Author:** techfreak, johnschultz, samoneilll, 4cozm (DMC Extensions)
