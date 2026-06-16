@@ -27,6 +27,9 @@ COPY static/entrypoint.sh /entrypoint.sh
 COPY static/nginx/nginx.conf /etc/nginx/templateNginx.conf
 COPY static/nginx/site.conf /etc/nginx/templateSite.conf
 COPY static/php/fpm-pool.conf /etc/php7/php-fpm.d/zzz_custom.conf
+# 베이스 이미지 기본 풀(www.conf) 제거 — 우리 zzz_custom.conf와 [www] 풀이 중복되어
+# 워커가 두 풀에서 동시에 떠 max_children(10) 상한을 우회하던 문제 방지
+RUN rm -f /etc/php7/php-fpm.d/www.conf
 COPY static/php/php.ini /etc/zzz_custom.ini
 COPY static/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
