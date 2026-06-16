@@ -39,6 +39,8 @@ COPY static/nginx/site.conf  /etc/nginx/templateSite.conf
 
 # Configure PHP-FPM
 COPY static/php/fpm-pool.conf /etc/php7/php-fpm.d/zzz_custom.conf
+# 베이스 이미지 기본 풀(www.conf) 제거 — [www] 풀 중복으로 워커가 max_children를 우회하던 문제 방지
+RUN rm -f /etc/php7/php-fpm.d/www.conf
 
 COPY static/php/php.ini /etc/zzz_custom.ini
 # configure cron
