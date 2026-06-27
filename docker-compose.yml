@@ -1,7 +1,7 @@
 services:
   pfdb:
     image: bianjp/mariadb-alpine:latest
-    mem_limit: 550m
+    mem_limit: 900m
     environment:
       MYSQL_ROOT_PASSWORD: $MYSQL_PASSWORD
     networks:
@@ -44,8 +44,8 @@ services:
 
   pf-redis:
     image: redis:6.2.5-alpine3.14
-    mem_limit: 150m
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
+    mem_limit: 320m
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
     container_name: redis
     volumes:
       - redis_data:/data
@@ -83,7 +83,7 @@ services:
     restart: always
   pf:
     container_name: pathfinder
-    mem_limit: 500m
+    mem_limit: 1200m
     build: .
     image: pathfinder:local
     env_file:
@@ -128,7 +128,7 @@ services:
     restart: always
   pf-daemon:
     container_name: pathfinder-daemon
-    mem_limit: 200m
+    mem_limit: 300m
     build: .
     image: pathfinder:local
     env_file:
