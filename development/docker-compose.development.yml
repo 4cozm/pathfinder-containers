@@ -91,7 +91,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
+      # Security: Traefik dashboard bound to loopback only (dev).
+      - "127.0.0.1:8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - /etc/timezone:/etc/timezone:ro
