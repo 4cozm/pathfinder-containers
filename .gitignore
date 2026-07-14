@@ -19,3 +19,7 @@ node_modules/
 *.br
 *.gz
 *.map
+# Security: never commit DB dumps
+backups/
+*.sql
+*.dump
