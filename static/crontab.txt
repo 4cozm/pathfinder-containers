@@ -1,2 +1,4 @@
 * * * * * cd /var/www/html/pathfinder;sudo -u nobody php index.php /cron >> /var/log/cron.log 2>&1
-
+# entrypoint의 `crontab /var/crontab.txt`가 root crontab을 통째로 교체해 alpine 기본
+# periodic(run-parts) 엔트리가 사라지므로, logrotate는 여기서 명시적으로 돌려야 한다.
+0 4 * * * logrotate /etc/logrotate.d/pathfinder >> /var/log/logrotate.log 2>&1

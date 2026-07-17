@@ -5,3 +5,17 @@
 	compress
 	notifempty
 }
+
+# 관측성 로그 로테이션 — main_ext 전체 상태코드 로깅으로 access.log 볼륨이 커지므로 필수.
+# copytruncate: nginx/php 재시작·시그널 없이 회전 (Alloy tail은 truncate를 자동 감지).
+/var/log/nginx/*.log /var/www/html/pathfinder/logs/*.log {
+	su nobody nobody
+	daily
+	maxsize 100M
+	missingok
+	rotate 7
+	compress
+	delaycompress
+	notifempty
+	copytruncate
+}

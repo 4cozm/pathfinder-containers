@@ -1,0 +1,39 @@
+# 관측성 스택 (opt-in) — Grafana Cloud + Alloy 단일 에이전트 (A안)
+#
+# 실행:
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+#
+# 사전 준비: Grafana Cloud 무료 계정 생성 후 .env에 GCLOUD_* 값 채우기 (docs/observability.md 참고)
+#
+# 메모리 예산: alloy 단일 컨테이너 ~350m (내장 unix/redis/cadvisor exporter + 로그 수집 포함).
+# 기존 스택 합계 ~3.08GB + 350m → 4GB 박스에서 OS 몫 감안 시 아슬하지만 수용 가능.
+services:
+  alloy:
+    # 필요 시 특정 버전으로 핀 (https://hub.docker.com/r/grafana/alloy/tags)
+    image: grafana/alloy:latest
+    container_name: alloy
+    mem_limit: 350m
+    restart: always
+    env_file:
+      - .env
+    command:
+      - run
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./config/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+      # 컨테이너 stdout 로그 + cadvisor + docker 디스커버리
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # 앱/nginx 파일 로그 (호스트 bind mount 재사용)
+      - ./logs:/host/logs:ro
+      # 호스트 메트릭 (unix exporter)
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+    networks:
+      - pf
+
+volumes:
+  alloy_data:

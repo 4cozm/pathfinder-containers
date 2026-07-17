@@ -1,0 +1,159 @@
+// Grafana Alloy 구성 — pathfinder-containers 관측 파이프라인 (A안: Grafana Cloud)
+//
+// 박스(2 vCPU / 4GB)에는 이 에이전트 하나만 올리고, 저장/조회(Prometheus·Loki·Grafana)는
+// 전부 Grafana Cloud가 담당한다. 인증값은 .env의 GCLOUD_* 변수로 주입된다.
+//
+// 수집 대상:
+//   [metrics]
+//   - pf:8081/metrics        앱 통합 메트릭 (pf_http_*, pf_db_*, pf_esi_*, pf_session_*,
+//                            pf_socket_*, pf_cron_*, pf_daemon_*, pf_phpfpm_*, pf_nginx_*)
+//   - 내장 unix exporter     호스트 CPU/메모리/디스크/IO (2코어 포화 감시 — 필수)
+//   - 내장 redis exporter    세션/캐시 Redis (evictions, latency — 권장)
+//   - 내장 cadvisor          컨테이너별 메모리/CPU (pf-socket 200m OOM 감시 — 권장)
+//   [logs]
+//   - ./logs/app/*.log       앱 로그 (error, sso, php_slow 등)
+//   - ./logs/nginx/*.log     액세스(rt=/ut= 타이밍 포함)/에러 로그
+//   - docker stdout/stderr   pf-socket(ws-stats), pf-daemon(tick), traefik 등
+
+// ============================== outputs =====================================
+
+prometheus.remote_write "grafanacloud" {
+  endpoint {
+    url = sys.env("GCLOUD_HOSTED_METRICS_URL")
+
+    basic_auth {
+      username = sys.env("GCLOUD_HOSTED_METRICS_ID")
+      password = sys.env("GCLOUD_RW_API_KEY")
+    }
+  }
+}
+
+loki.write "grafanacloud" {
+  endpoint {
+    url = sys.env("GCLOUD_HOSTED_LOGS_URL")
+
+    basic_auth {
+      username = sys.env("GCLOUD_HOSTED_LOGS_ID")
+      password = sys.env("GCLOUD_RW_API_KEY")
+    }
+  }
+}
+
+// ============================== metrics =====================================
+
+// 앱 통합 메트릭 (nginx 내부 전용 :8081 vhost)
+prometheus.scrape "pathfinder_app" {
+  targets = [{
+    __address__ = "pf:8081",
+    job         = "pathfinder",
+  }]
+  metrics_path    = "/metrics"
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.grafanacloud.receiver]
+}
+
+// 호스트 메트릭 (node exporter 내장판) — 2 vCPU 박스라 CPU 포화/스틸이 곧 렉
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+}
+
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.grafanacloud.receiver]
+}
+
+// Redis (세션/캐시/메트릭 저장소, maxmemory 256mb volatile-lru — eviction 감시)
+prometheus.exporter.redis "pf" {
+  redis_addr = "redis:6379"
+}
+
+prometheus.scrape "redis" {
+  targets         = prometheus.exporter.redis.pf.targets
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.grafanacloud.receiver]
+}
+
+// 컨테이너별 리소스 (cadvisor 내장판) — mem_limit 대비 사용량, OOM 킬 추적
+prometheus.exporter.cadvisor "docker" {
+  docker_host      = "unix:///var/run/docker.sock"
+  docker_only      = true
+  storage_duration = "1m"
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.docker.targets
+  scrape_interval = "60s"
+  forward_to      = [prometheus.remote_write.grafanacloud.receiver]
+}
+
+// (선택) MariaDB internals — 필요해지면 주석 해제.
+// 사전 준비: exporter 전용 DB 유저 생성 + .env에 MYSQLD_EXPORTER_DSN 추가
+//   CREATE USER 'exporter'@'%' IDENTIFIED BY '<password>';
+//   GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'%';
+//   MYSQLD_EXPORTER_DSN=exporter:<password>@(mariadb:3306)/
+//
+// prometheus.exporter.mysql "pfdb" {
+//   data_source_name = sys.env("MYSQLD_EXPORTER_DSN")
+// }
+//
+// prometheus.scrape "mysql" {
+//   targets         = prometheus.exporter.mysql.pfdb.targets
+//   scrape_interval = "60s"
+//   forward_to      = [prometheus.remote_write.grafanacloud.receiver]
+// }
+
+// ============================== logs ========================================
+
+// 앱 로그 파일 (error.log, sso.log, socket_error.log, php_slow.log, esi_requests.log ...)
+local.file_match "app_logs" {
+  path_targets = [{
+    __path__ = "/host/logs/app/*.log",
+    job      = "pathfinder-app",
+  }]
+}
+
+loki.source.file "app_logs" {
+  targets    = local.file_match.app_logs.targets
+  forward_to = [loki.write.grafanacloud.receiver]
+}
+
+// nginx 액세스/에러 로그 (main_ext: rt=요청시간 ut=업스트림시간 → 쿼리 시점에 logfmt/regexp 파싱)
+local.file_match "nginx_logs" {
+  path_targets = [{
+    __path__ = "/host/logs/nginx/*.log",
+    job      = "nginx",
+  }]
+}
+
+loki.source.file "nginx_logs" {
+  targets    = local.file_match.nginx_logs.targets
+  forward_to = [loki.write.grafanacloud.receiver]
+}
+// 참고: loki.source.file은 전체 경로를 `filename` 라벨로 자동 부여한다
+// (예: filename="/host/logs/nginx/access.log") — 쿼리 시 filename=~".*access.log" 형태로 사용
+
+// 컨테이너 stdout/stderr (pf-socket의 [ws-stats], pf-daemon의 tick 로그, traefik, redis 등)
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "std" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.containers.rules
+  labels        = { job = "docker" }
+  forward_to    = [loki.write.grafanacloud.receiver]
+}
