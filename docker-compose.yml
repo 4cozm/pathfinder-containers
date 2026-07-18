@@ -86,6 +86,11 @@ services:
     mem_limit: 1200m
     build: .
     image: pathfinder:local
+    # php-fpm slowlog(request_slowlog_timeout)가 워커 백트레이스를 뜨려면 ptrace가
+    # 필요한데 Docker 기본 seccomp이 차단함 → "failed to ptrace(ATTACH)" 에러.
+    # 진단용 최소 권한으로 SYS_PTRACE만 허용 (컨테이너 자기 자신의 fpm 워커 대상).
+    cap_add:
+      - SYS_PTRACE
     env_file:
       - .env
     labels:
