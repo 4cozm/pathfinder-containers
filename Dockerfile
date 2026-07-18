@@ -3,9 +3,11 @@ FROM ghcr.io/goryn-clade/pathfinder:latest
 # 로컬 composer.lock 기준으로 vendor 갱신 (베이스 이미지 vendor만 쓰면 DT_JSON 등 누락 가능)
 # pws.ps1/루트 빌드용. 수동 빌드는 pathfinder.Dockerfile에서 동일 DT_JSON 패치 적용함.
 COPY ./pathfinder/composer.json ./pathfinder/composer.lock /var/www/html/pathfinder/
-RUN apk add --no-cache curl unzip fcgi logrotate \
+# php7-opcache: 업스트림 이미지에 누락 — 없으면 요청마다 전체 PHP 재컴파일 (CPU 병목 실측)
+# --optimize-autoloader: 오토로더 classmap 생성 — 디스크 스캔 기반 클래스 탐색 제거
+RUN apk add --no-cache curl unzip fcgi logrotate php7-opcache \
  && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
- && cd /var/www/html/pathfinder && rm -rf vendor && composer install --no-dev --no-scripts --no-interaction \
+ && cd /var/www/html/pathfinder && rm -rf vendor && composer install --no-dev --no-scripts --no-interaction --optimize-autoloader \
  && apk del curl unzip
 
 COPY ./scripts/patch-schema-dt-json.php /tmp/patch-schema-dt-json.php
@@ -31,6 +33,7 @@ COPY static/php/fpm-pool.conf /etc/php7/php-fpm.d/zzz_custom.conf
 # 워커가 두 풀에서 동시에 떠 max_children(10) 상한을 우회하던 문제 방지
 RUN rm -f /etc/php7/php-fpm.d/www.conf
 COPY static/php/php.ini /etc/zzz_custom.ini
+COPY static/php/opcache.ini /etc/php7/conf.d/zzz_opcache.ini
 COPY static/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # 관측성: nginx/app 로그 로테이션 + logrotate 크론 엔트리 (베이스 이미지 값을 덮어씀)
 COPY static/logrotate/pathfinder /etc/logrotate.d/pathfinder
