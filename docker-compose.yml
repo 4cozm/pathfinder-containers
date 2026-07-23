@@ -12,16 +12,18 @@ services:
       # unhealthy 가 되면 autoheal 이 이 컨테이너를 재시작한다.
       - "autoheal=true"
     healthcheck:
-      # 이전 검사(`mysqladmin ping -h localhost`)는 두 가지가 잘못돼 있었다.
-      #  1) 자격증명이 없어 10초마다 서버 에러 로그에 "Access denied ... (using
-      #     password: NO)" 를 쌓았다. 볼륨의 .err 파일이 수백 MB로 자란 주 원인.
-      #  2) mysqladmin ping 은 핸드셰이크만 되면 인증에 실패해도 exit 0 을 준다.
-      #     즉 접속이 거부돼도 healthy 로 보고했다 = 사실상 검사가 아니었다.
-      # 실제 쿼리로 바꿔 "서버가 응답한다"가 아니라 "질의를 처리한다"를 검증한다.
-      # 비밀번호는 MYSQL_PWD 로 넘겨 ps 출력과 로그에 남지 않게 한다.
-      # 접속은 unix 소켓이 아니라 TCP(127.0.0.1)로 한다 — 앱이 쓰는 경로가 TCP 이고,
-      # 2026-07-23 장애에서 실제로 막힌 것도 3306 accept 큐였다.
-      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql -h 127.0.0.1 -u root --connect-timeout=3 -N -e 'SELECT 1' >/dev/null 2>&1"]
+      # 이 검사는 엄밀히 말해 좋은 검사가 아니다. mysqladmin ping 은 인증에 실패해도
+      # exit 0 을 주므로 "접속 가능"이 아니라 "5초 안에 응답"만 검증한다. 게다가
+      # 자격증명이 없어 서버 에러 로그에 Access denied 를 쌓는다.
+      #
+      # 그럼에도 그대로 두는 이유: 2026-07-23 장애(mysqld 세그폴트 후 hang)를 이
+      # 검사가 287회 연속 실패로 정확히 탐지해냈다. autoheal 이 필요로 하는 신호는
+      # 그것으로 충분하다.
+      #
+      # 실제 쿼리(`mysql -h 127.0.0.1 -e 'SELECT 1'`)로 바꿔봤으나 이 이미지의
+      # 컨테이너는 루프백 인터페이스(lo)가 UP 상태가 아니라 127.0.0.1 이 ETIMEDOUT(110)
+      # 으로 죽고, unix 소켓 폴백도 실패한다. 검사를 강화하려면 lo 문제부터 풀어야 한다.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
