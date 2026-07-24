@@ -92,6 +92,15 @@ services:
       pf:
         aliases:
           - "$PATHFINDER_SOCKET_HOST"
+    # 이 컨테이너의 로그는 전부 info 레벨 characterUpdate 노이즈인데 상한이 없어
+    # 2026-07-21 104MB → 07-24 188MB 로 계속 자랐다. 로그 레벨을 낮추는 게 근본이지만
+    # 그건 websocket 코드 변경이라 별건이고, 우선 무한 증식을 막는다. 30MB 상한이면
+    # 최근 이슈를 되짚기에는 충분하다.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
       - pf_tmp:/var/www/html/pathfinder/tmp
       - ./logs:/var/www/html/pathfinder/history/map
@@ -110,6 +119,13 @@ services:
       - SYS_PTRACE
     env_file:
       - .env
+    # 현재 3MB 로 작지만 그건 재시작이 잦아서일 뿐 상한이 없다. fpm 이 워커 stderr 를
+    # catch_workers_output 으로 받아 넘기므로 ESI/slowlog 노이즈가 늘면 언제든 커진다.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
@@ -155,6 +171,12 @@ services:
     image: pathfinder:local
     env_file:
       - .env
+    # 데몬은 10초마다 tick 로그를 한 줄씩 쌓는다(하루 8,640줄). 상한이 없으면 단조 증가한다.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - pf
     healthcheck:
