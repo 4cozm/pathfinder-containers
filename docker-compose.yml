@@ -177,6 +177,13 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    labels:
+      # 하트비트 healthcheck 가 unhealthy 를 띄우면 autoheal 이 재시작한다.
+      # pfdb 에만 붙어 있던 것을 데몬까지 확장한 이유: pfdb 가 재시작되면 데몬은
+      # 죽은 커넥션을 든 채 남아 자력 복구가 안 되므로, pfdb 만 자동 복구시키면
+      # "DB 는 살아났는데 트래킹은 멈춘" 조용한 반쪽 장애가 남는다.
+      # 이제 pfdb 복구 → 데몬 하트비트 정지 → 데몬도 자동 재시작으로 연쇄가 닫힌다.
+      - "autoheal=true"
     networks:
       - pf
     healthcheck:
